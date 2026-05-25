@@ -76,7 +76,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   }));
 
   return (
-    <div className="max-w-screen-xl mx-auto px-4 sm:px-6 py-8">
+    <div className="max-w-screen-xl mx-auto px-3 sm:px-6 py-5">
       <FilterBar tags={allTags ?? []} selectedTag={tag} currentSort={sort} currentQuery={q} />
       <PostGrid posts={enrichedPosts} currentUserId={user?.id} />
     </div>

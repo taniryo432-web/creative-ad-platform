@@ -21,9 +21,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="ja" className={inter.variable}>
-      <body className="min-h-screen bg-white">
+      <body className="min-h-screen bg-[#F7F7F5]">
         <Header />
-        <main className="pt-16">{children}</main>
+        <main className="pt-14">{children}</main>
         <Toaster />
       </body>
     </html>

@@ -17,7 +17,7 @@ const sortOptions: { value: SortOption; label: string }[] = [
   { value: "saved", label: "保存数" },
 ];
 
-export function FilterBar({ tags, selectedTag, currentSort, currentQuery }: FilterBarProps) {
+export function FilterBar({ tags, selectedTag, currentSort }: FilterBarProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -32,55 +32,57 @@ export function FilterBar({ tags, selectedTag, currentSort, currentQuery }: Filt
   };
 
   return (
-    <div className="mb-8 space-y-4">
-      <div className="flex items-center gap-2 flex-wrap">
-        <span className="text-xs font-medium text-gray-400 uppercase tracking-wider">並び替え</span>
+    <div className="mb-6">
+      {/* 横スクロール可能な1行 */}
+      <div className="flex items-center gap-1.5 overflow-x-auto scroll-hidden pb-1">
+        {/* ソートオプション */}
         {sortOptions.map((opt) => (
           <button
             key={opt.value}
             onClick={() => updateParam("sort", opt.value)}
             className={cn(
-              "px-3 py-1 text-sm rounded-full transition-colors",
+              "px-3.5 py-1.5 text-[13px] rounded-full whitespace-nowrap transition-colors shrink-0",
               currentSort === opt.value
-                ? "bg-black text-white"
-                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                ? "bg-gray-900 text-white font-medium"
+                : "bg-white text-gray-600 hover:bg-gray-100 border border-gray-200"
             )}
           >
             {opt.label}
           </button>
         ))}
-      </div>
 
-      {tags.length > 0 && (
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-xs font-medium text-gray-400 uppercase tracking-wider">タグ</span>
+        {/* 区切り */}
+        <div className="w-px h-5 bg-gray-200 shrink-0 mx-1" />
+
+        {/* タグ: すべて */}
+        <button
+          onClick={() => updateParam("tag", undefined)}
+          className={cn(
+            "px-3.5 py-1.5 text-[13px] rounded-full whitespace-nowrap transition-colors shrink-0",
+            !selectedTag
+              ? "bg-gray-900 text-white font-medium"
+              : "bg-white text-gray-600 hover:bg-gray-100 border border-gray-200"
+          )}
+        >
+          すべて
+        </button>
+
+        {/* タグ一覧 */}
+        {tags.map((tag) => (
           <button
-            onClick={() => updateParam("tag", undefined)}
+            key={tag.id}
+            onClick={() => updateParam("tag", selectedTag === tag.name ? undefined : tag.name)}
             className={cn(
-              "px-3 py-1 text-sm rounded-full transition-colors",
-              !selectedTag
-                ? "bg-black text-white"
-                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+              "px-3.5 py-1.5 text-[13px] rounded-full whitespace-nowrap transition-colors shrink-0",
+              selectedTag === tag.name
+                ? "bg-gray-900 text-white font-medium"
+                : "bg-white text-gray-600 hover:bg-gray-100 border border-gray-200"
             )}
           >
-            すべて
+            #{tag.name}
           </button>
-          {tags.map((tag) => (
-            <button
-              key={tag.id}
-              onClick={() => updateParam("tag", selectedTag === tag.name ? undefined : tag.name)}
-              className={cn(
-                "px-3 py-1 text-sm rounded-full transition-colors",
-                selectedTag === tag.name
-                  ? "bg-black text-white"
-                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-              )}
-            >
-              #{tag.name}
-            </button>
-          ))}
-        </div>
-      )}
+        ))}
+      </div>
     </div>
   );
 }
