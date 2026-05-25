@@ -18,7 +18,7 @@ export function Header() {
             <LayoutGrid className="w-4 h-4 text-white" />
           </div>
           <span className="font-semibold text-[14px] tracking-tight text-gray-900 hidden sm:block">
-            Creative Intel
+            FFI Creative
           </span>
         </Link>
 

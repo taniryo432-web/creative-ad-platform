@@ -1,15 +1,12 @@
+"use server";
+
 import { createClient } from "@/lib/supabase/server";
-import { PostFeed } from "@/components/posts/PostFeed";
 import type { Post } from "@/types";
 
 const POSTS_PER_PAGE = 20;
 
-export default async function HomePage() {
+export async function fetchMorePosts(offset: number, userId?: string): Promise<Post[]> {
   const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
 
   const { data: posts } = await supabase
     .from("posts")
@@ -19,32 +16,24 @@ export default async function HomePage() {
       like_count:likes(count)
     `)
     .order("created_at", { ascending: false })
-    .limit(POSTS_PER_PAGE);
+    .range(offset, offset + POSTS_PER_PAGE - 1);
+
+  if (!posts || posts.length === 0) return [];
 
   let userLikes: string[] = [];
-  if (user && posts && posts.length > 0) {
+  if (userId) {
     const postIds = posts.map((p) => p.id);
     const { data: likes } = await supabase
       .from("likes")
       .select("post_id")
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .in("post_id", postIds);
     userLikes = likes?.map((l) => l.post_id) ?? [];
   }
 
-  const enrichedPosts: Post[] = (posts ?? []).map((post) => ({
+  return posts.map((post) => ({
     ...post,
     like_count: post.like_count?.[0]?.count ?? 0,
     is_liked: userLikes.includes(post.id),
   }));
-
-  return (
-    <div className="max-w-screen-xl mx-auto px-3 sm:px-6 py-5">
-      <PostFeed
-        initialPosts={enrichedPosts}
-        currentUserId={user?.id}
-        showAuthor={true}
-      />
-    </div>
-  );
 }

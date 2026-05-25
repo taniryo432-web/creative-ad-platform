@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { Heart, Bookmark, User } from "lucide-react";
+import { Heart, User } from "lucide-react";
 import { cn, formatNumber } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import type { Post } from "@/types";
@@ -11,13 +11,12 @@ import type { Post } from "@/types";
 interface PostCardProps {
   post: Post;
   currentUserId?: string;
+  showAuthor?: boolean; // 将来の匿名モード切替用フラグ
 }
 
-export function PostCard({ post, currentUserId }: PostCardProps) {
+export function PostCard({ post, currentUserId, showAuthor = true }: PostCardProps) {
   const [liked, setLiked] = useState(post.is_liked ?? false);
-  const [saved, setSaved] = useState(post.is_saved ?? false);
   const [likeCount, setLikeCount] = useState(post.like_count ?? 0);
-  const [saveCount, setSaveCount] = useState(post.save_count ?? 0);
   const [loading, setLoading] = useState(false);
 
   const supabase = createClient();
@@ -27,6 +26,7 @@ export function PostCard({ post, currentUserId }: PostCardProps) {
     e.stopPropagation();
     if (!currentUserId || loading) return;
     setLoading(true);
+
     if (liked) {
       await supabase.from("likes").delete().match({ post_id: post.id, user_id: currentUserId });
       setLiked(false);
@@ -39,29 +39,12 @@ export function PostCard({ post, currentUserId }: PostCardProps) {
     setLoading(false);
   };
 
-  const handleSave = async (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (!currentUserId || loading) return;
-    setLoading(true);
-    if (saved) {
-      await supabase.from("saves").delete().match({ post_id: post.id, user_id: currentUserId });
-      setSaved(false);
-      setSaveCount((c) => c - 1);
-    } else {
-      await supabase.from("saves").insert({ post_id: post.id, user_id: currentUserId });
-      setSaved(true);
-      setSaveCount((c) => c + 1);
-    }
-    setLoading(false);
-  };
-
   return (
     <div className="group relative">
-      {/* メインリンク: 画像 + テキストエリア */}
-      <Link href={`/posts/${post.id}`} className="block">
+      {/* カード全体リンク */}
+      <Link href={`/posts/${post.id}`} className="block cursor-pointer">
         {/* 画像エリア */}
-        <div className="relative overflow-hidden rounded-xl bg-gray-200">
+        <div className="relative overflow-hidden rounded-xl bg-gray-100">
           {post.image_url ? (
             <Image
               src={post.image_url}
@@ -72,98 +55,68 @@ export function PostCard({ post, currentUserId }: PostCardProps) {
               unoptimized
             />
           ) : (
-            <div className="w-full aspect-[3/4] flex items-center justify-center">
-              <span className="text-gray-400 text-xs">No Image</span>
+            <div className="w-full aspect-[3/4] flex items-center justify-center bg-gray-100">
+              <span className="text-gray-300 text-xs">No Image</span>
             </div>
           )}
-          {/* デスクトップ: ホバー時の暗いオーバーレイ (pointer-events-none で Link の邪魔をしない) */}
-          <div className="absolute inset-0 rounded-xl bg-black/0 group-hover:bg-black/30 transition-colors duration-200 hidden sm:block pointer-events-none" />
+          {/* デスクトップ: ホバー時オーバーレイ */}
+          <div className="absolute inset-0 rounded-xl bg-black/0 group-hover:bg-black/20 transition-colors duration-200 hidden sm:block pointer-events-none" />
         </div>
 
         {/* テキストエリア */}
-        <div className="pt-2 px-0.5">
+        <div className="pt-2 px-0.5 pb-1">
           <h3 className="text-[13px] font-semibold text-gray-900 leading-snug line-clamp-2">
             {post.title}
           </h3>
-          <div className="flex items-center gap-1.5 mt-1.5">
-            <div className="w-5 h-5 rounded-full overflow-hidden bg-gray-200 flex items-center justify-center shrink-0">
-              {post.user?.icon_url ? (
-                <img src={post.user.icon_url} alt={post.user.name} className="w-full h-full object-cover" />
-              ) : (
-                <User className="w-3 h-3 text-gray-400" />
-              )}
-            </div>
-            <span className="text-[11px] text-gray-400 truncate">
-              {post.user?.name ?? "匿名"}
-            </span>
-          </div>
-          {post.tags && post.tags.length > 0 && (
-            <div className="flex flex-wrap gap-1 mt-1.5">
-              {post.tags.slice(0, 2).map((tag) => (
-                <span key={tag.id} className="text-[10px] text-gray-400">
-                  #{tag.name}
-                </span>
-              ))}
+
+          {/* 投稿者表示 (showAuthor フラグで制御) */}
+          {showAuthor && (
+            <div className="flex items-center gap-1.5 mt-1.5">
+              <div className="w-4 h-4 rounded-full overflow-hidden bg-gray-200 flex items-center justify-center shrink-0">
+                {post.user?.icon_url ? (
+                  <img src={post.user.icon_url} alt={post.user.name} className="w-full h-full object-cover" />
+                ) : (
+                  <User className="w-2.5 h-2.5 text-gray-400" />
+                )}
+              </div>
+              <span className="text-[11px] text-gray-400 truncate">
+                {post.user?.name ?? "匿名"}
+              </span>
             </div>
           )}
         </div>
       </Link>
 
-      {/* デスクトップ用ボタン: Linkの外に配置 (クリックしても遷移しない) */}
-      <div
+      {/* デスクトップ: ホバー時のいいねボタン (Link の外に配置) */}
+      <button
+        onClick={handleLike}
         className={cn(
-          "absolute top-2 left-2 right-2",
-          "hidden sm:flex items-start justify-between",
+          "absolute top-2 right-2 z-10",
+          "hidden sm:flex items-center justify-center",
+          "w-9 h-9 rounded-full shadow-sm transition-all duration-150",
           "opacity-0 group-hover:opacity-100",
           "pointer-events-none group-hover:pointer-events-auto",
-          "transition-opacity duration-200 z-10"
+          liked
+            ? "bg-red-500 text-white"
+            : "bg-white text-gray-600 hover:bg-gray-50"
         )}
+        aria-label="いいね"
       >
-        <button
-          onClick={handleSave}
-          className={cn(
-            "px-3 py-1.5 rounded-full text-[12px] font-semibold transition-all shadow-sm",
-            saved
-              ? "bg-gray-900 text-white"
-              : "bg-white text-gray-800 hover:bg-gray-50"
-          )}
-        >
-          {saved ? "保存済み" : "保存"}
-        </button>
-        <button
-          onClick={handleLike}
-          className={cn(
-            "w-9 h-9 rounded-full flex items-center justify-center transition-all shadow-sm",
-            liked
-              ? "bg-red-500 text-white"
-              : "bg-white text-gray-700 hover:bg-gray-50"
-          )}
-        >
-          <Heart className={cn("w-4 h-4", liked && "fill-current")} />
-        </button>
-      </div>
+        <Heart className={cn("w-4 h-4", liked && "fill-current")} />
+      </button>
 
-      {/* モバイル用ボタン: 画像下に常時表示 */}
-      <div className="flex items-center gap-3 mt-1.5 px-0.5 sm:hidden">
+      {/* モバイル: 常時表示のいいねボタン */}
+      <div className="flex items-center gap-1.5 mt-1 px-0.5 sm:hidden">
         <button
           onClick={handleLike}
           className={cn(
-            "flex items-center gap-1 text-xs font-medium transition-colors",
-            liked ? "text-red-500" : "text-gray-400 active:text-red-500"
+            "flex items-center gap-1 text-xs font-medium transition-colors active:scale-95",
+            liked ? "text-red-500" : "text-gray-400"
           )}
+          aria-label="いいね"
         >
           <Heart className={cn("w-3.5 h-3.5", liked && "fill-current")} />
           <span>{formatNumber(likeCount)}</span>
-        </button>
-        <button
-          onClick={handleSave}
-          className={cn(
-            "flex items-center gap-1 text-xs font-medium transition-colors",
-            saved ? "text-gray-800" : "text-gray-400 active:text-gray-800"
-          )}
-        >
-          <Bookmark className={cn("w-3.5 h-3.5", saved && "fill-current")} />
-          <span>{formatNumber(saveCount)}</span>
         </button>
       </div>
     </div>

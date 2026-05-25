@@ -10,8 +10,8 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Creative Ad Intelligence",
-  description: "広告クリエイティブの知見を蓄積・共有するプラットフォーム",
+  title: "FFI Creative",
+  description: "クリエイティブ共有プラットフォーム",
 };
 
 export default function RootLayout({
