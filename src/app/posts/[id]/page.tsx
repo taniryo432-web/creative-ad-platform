@@ -3,6 +3,7 @@ import Image from "next/image";
 import { createClient } from "@/lib/supabase/server";
 import { formatDate } from "@/lib/utils";
 import { PostDetailLike } from "@/components/posts/PostDetailLike";
+import { PreviewButton } from "@/components/posts/PreviewButton";
 import { CommentSection } from "@/components/posts/CommentSection";
 import { User } from "lucide-react";
 
@@ -63,15 +64,26 @@ export default async function PostPage({ params }: PostPageProps) {
         </div>
       )}
 
-      {/* タイトル + いいね */}
+      {/* タイトル + いいね + Preview */}
       <div className="flex items-start justify-between gap-4 mb-4">
         <h1 className="text-lg font-semibold text-gray-900 leading-snug">{post.title}</h1>
-        <PostDetailLike
-          postId={id}
-          currentUserId={user?.id}
-          initialLiked={isLiked}
-          initialLikeCount={likeCount}
-        />
+        <div className="flex items-center gap-2 shrink-0">
+          <PreviewButton
+            post={{
+              title: post.title,
+              description: post.description,
+              image_url: post.image_url,
+              user: post.user,
+              like_count: likeCount,
+            }}
+          />
+          <PostDetailLike
+            postId={id}
+            currentUserId={user?.id}
+            initialLiked={isLiked}
+            initialLikeCount={likeCount}
+          />
+        </div>
       </div>
 
       {/* 投稿者 */}
