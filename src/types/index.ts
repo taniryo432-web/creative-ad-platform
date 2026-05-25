@@ -2,6 +2,10 @@ export type User = {
   id: string;
   name: string;
   icon_url: string | null;
+  email?: string | null;
+  role?: "admin" | "member";
+  status?: "pending" | "approved" | "banned";
+  bio?: string | null;
   created_at: string;
 };
 

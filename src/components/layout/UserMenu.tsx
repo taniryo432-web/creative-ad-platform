@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { User, LogOut, Bookmark } from "lucide-react";
+import { User, LogOut, Shield } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import type { User as UserType } from "@/types";
 
@@ -18,7 +18,7 @@ export function UserMenu() {
       if (user) {
         supabase
           .from("users")
-          .select("*")
+          .select("id, name, icon_url, role, status, created_at")
           .eq("id", user.id)
           .single()
           .then(({ data }) => setUser(data));
@@ -73,14 +73,16 @@ export function UserMenu() {
               <User className="w-4 h-4" />
               プロフィール
             </Link>
-            <Link
-              href="/profile/saves"
-              className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
-              onClick={() => setOpen(false)}
-            >
-              <Bookmark className="w-4 h-4" />
-              保存済み
-            </Link>
+            {user.role === "admin" && (
+              <Link
+                href="/admin"
+                className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                onClick={() => setOpen(false)}
+              >
+                <Shield className="w-4 h-4" />
+                ユーザー管理
+              </Link>
+            )}
             <button
               onClick={handleSignOut}
               className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50"
