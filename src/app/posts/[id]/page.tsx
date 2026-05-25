@@ -49,9 +49,9 @@ export default async function PostPage({ params }: PostPageProps) {
 
   return (
     <div className="max-w-2xl mx-auto px-4 sm:px-6 py-8">
-      {/* 画像 */}
+      {/* 画像 + Story Preview オーバーレイボタン */}
       {post.image_url && (
-        <div className="rounded-xl overflow-hidden bg-gray-100 mb-6">
+        <div className="relative rounded-xl overflow-hidden bg-gray-100 mb-6 group">
           <Image
             src={post.image_url}
             alt={post.title}
@@ -61,29 +61,30 @@ export default async function PostPage({ params }: PostPageProps) {
             priority
             unoptimized
           />
+          {/* Preview ボタン（画像下部に常設） */}
+          <div className="absolute bottom-0 left-0 right-0 px-4 pb-4 pt-12 bg-gradient-to-t from-black/50 to-transparent flex items-end justify-between">
+            <PreviewButton
+              post={{
+                title: post.title,
+                description: post.description,
+                image_url: post.image_url,
+                user: post.user,
+                like_count: likeCount,
+              }}
+            />
+          </div>
         </div>
       )}
 
-      {/* タイトル + いいね + Preview */}
+      {/* タイトル + いいね */}
       <div className="flex items-start justify-between gap-4 mb-4">
         <h1 className="text-lg font-semibold text-gray-900 leading-snug">{post.title}</h1>
-        <div className="flex items-center gap-2 shrink-0">
-          <PreviewButton
-            post={{
-              title: post.title,
-              description: post.description,
-              image_url: post.image_url,
-              user: post.user,
-              like_count: likeCount,
-            }}
-          />
-          <PostDetailLike
-            postId={id}
-            currentUserId={user?.id}
-            initialLiked={isLiked}
-            initialLikeCount={likeCount}
-          />
-        </div>
+        <PostDetailLike
+          postId={id}
+          currentUserId={user?.id}
+          initialLiked={isLiked}
+          initialLikeCount={likeCount}
+        />
       </div>
 
       {/* 投稿者 */}
