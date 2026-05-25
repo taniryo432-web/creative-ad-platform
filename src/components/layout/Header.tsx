@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Plus, Search, Grid2x2 } from "lucide-react";
+import { Plus, Search, LayoutGrid } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { UserMenu } from "@/components/layout/UserMenu";
 
@@ -15,7 +15,7 @@ export function Header() {
         {/* ロゴ */}
         <Link href="/" className="flex items-center gap-2 shrink-0">
           <div className="w-7 h-7 bg-gray-900 rounded-lg flex items-center justify-center">
-            <Grid2x2 className="w-4 h-4 text-white" />
+            <LayoutGrid className="w-4 h-4 text-white" />
           </div>
           <span className="font-semibold text-[14px] tracking-tight text-gray-900 hidden sm:block">
             Creative Intel
