@@ -1,7 +1,13 @@
+import { createClient } from "@/lib/supabase/server";
 import { fetchRandomPosts } from "@/app/actions/posts";
 import { DiscoverViewer } from "@/components/discover/DiscoverViewer";
 
 export default async function DiscoverPage() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
   const posts = await fetchRandomPosts(30);
 
   if (posts.length === 0) {
@@ -13,5 +19,22 @@ export default async function DiscoverPage() {
     );
   }
 
-  return <DiscoverViewer posts={posts} />;
+  // ログイン済みユーザーのいいね済みIDを取得
+  let likedIds: string[] = [];
+  if (user) {
+    const { data: likes } = await supabase
+      .from("likes")
+      .select("post_id")
+      .eq("user_id", user.id)
+      .in("post_id", posts.map((p) => p.id));
+    likedIds = likes?.map((l) => l.post_id) ?? [];
+  }
+
+  return (
+    <DiscoverViewer
+      posts={posts}
+      currentUserId={user?.id}
+      initialLikedIds={likedIds}
+    />
+  );
 }
