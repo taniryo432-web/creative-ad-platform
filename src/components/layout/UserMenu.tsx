@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { User, LogOut, Shield } from "lucide-react";
@@ -11,23 +11,50 @@ export function UserMenu() {
   const [user, setUser] = useState<UserType | null>(null);
   const [open, setOpen] = useState(false);
   const router = useRouter();
-  const supabase = createClient();
+
+  // ── useRef で安定したインスタンスを保持 ──────────────────────────
+  // 毎レンダリングで createClient() を呼ぶと autoRefreshToken のタイマーが
+  // リセットされ、セッション維持が壊れるため ref で管理する。
+  const supabaseRef = useRef(createClient());
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (user) {
+    const supabase = supabaseRef.current;
+
+    // 初回: Cookie から即時セッション取得（ネットワーク不要）
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
         supabase
           .from("users")
           .select("id, name, icon_url, role, status, created_at")
-          .eq("id", user.id)
+          .eq("id", session.user.id)
           .single()
           .then(({ data }) => setUser(data));
       }
     });
+
+    // セッション変化（ログイン / ログアウト / トークン更新）を監視
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        supabase
+          .from("users")
+          .select("id, name, icon_url, role, status, created_at")
+          .eq("id", session.user.id)
+          .single()
+          .then(({ data }) => setUser(data));
+      } else {
+        setUser(null);
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut();
+    await supabaseRef.current.auth.signOut();
     router.push("/");
     router.refresh();
   };
