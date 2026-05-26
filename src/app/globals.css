@@ -20,6 +20,8 @@
 @layer base {
   * {
     border-color: hsl(var(--border));
+    /* 300ms タップ遅延を排除（モバイル快適性） */
+    touch-action: manipulation;
   }
   body {
     background-color: #F7F7F5;
@@ -68,10 +70,14 @@
     }
   }
 
-  /* Story プログレスバー CSS アニメーション */
+  /* Story プログレスバー CSS アニメーション
+   * width → transform: scaleX() に変更
+   * width は毎フレーム layout 再計算が走るが、
+   * transform はコンポジタースレッドで完結しメインスレッドを一切ブロックしない
+   */
   @keyframes story-fill {
-    from { width: 0%; }
-    to { width: 100%; }
+    from { transform: scaleX(0); }
+    to   { transform: scaleX(1); }
   }
 
   .scroll-hidden {

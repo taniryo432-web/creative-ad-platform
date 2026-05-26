@@ -1,14 +1,19 @@
 "use client";
 
 /**
- * DiscoverViewer
+ * DiscoverViewer — パフォーマンス最優先設計
  *
- * パフォーマンス最適化:
- * - プログレスバー: CSS animation (@keyframes story-fill) + key remount
- *   → setInterval/state 更新による毎フレーム再レンダリングを排除
- * - 進行タイミング: setTimeout 1 本のみ
- * - 次 2 件の画像をプリロード (Image constructor でブラウザキャッシュへ先読み)
- * - 再レンダリング: index / paused / storyKey 変化時のみ
+ * [削ったもの]
+ * - blur フィルタ背景画像: filter:blur() は GPU 激重のため完全削除
+ * - 二重画像レンダリング (blur+main): 画像 1 枚のみに
+ * - フェイクステータスバー (9:41): 不要な DOM 削除
+ * - PRELOAD_AHEAD 2→1: 余計な先読みを削減
+ *
+ * [保った最適化]
+ * - @keyframes story-fill: transform:scaleX() でコンポジタースレッド処理
+ * - setTimeout 1本のみでタイマー管理
+ * - storyKey 変化時のみ progress bar を再マウント
+ * - 切替アニメーション: 260ms→120ms で体感を大幅改善
  */
 
 import { useState, useEffect, useRef } from "react";
@@ -18,7 +23,7 @@ import { createClient } from "@/lib/supabase/client";
 import type { Post } from "@/types";
 
 const STORY_DURATION = 5000;
-const PRELOAD_AHEAD = 2; // 次 N 件を先読み
+const PRELOAD_AHEAD = 1; // 1 件先読みで十分（2件は過剰）
 
 interface DiscoverViewerProps {
   posts: Post[];
@@ -50,7 +55,7 @@ export function DiscoverViewer({ posts, currentUserId, initialLikedIds = [] }: D
   const supabase = createClient();
   const post = posts[index];
 
-  // ---- 次ストーリーへ ----
+  // ---- 次ストーリーへ（120ms で切替：260ms より速く体感が大幅改善） ----
   const goNext = () => {
     setClosing(true);
     setTimeout(() => {
@@ -61,7 +66,7 @@ export function DiscoverViewer({ posts, currentUserId, initialLikedIds = [] }: D
       } else {
         setDone(true);
       }
-    }, 260);
+    }, 120);
   };
 
   const goPrev = () => {
@@ -70,7 +75,7 @@ export function DiscoverViewer({ posts, currentUserId, initialLikedIds = [] }: D
       setIndex((i) => Math.max(0, i - 1));
       setStoryKey((k) => k + 1);
       setClosing(false);
-    }, 200);
+    }, 120);
   };
 
   // ---- タイマー ----
@@ -235,26 +240,10 @@ export function DiscoverViewer({ posts, currentUserId, initialLikedIds = [] }: D
     >
       <div className="relative w-full h-full md:w-[430px] md:h-[760px] md:rounded-2xl overflow-hidden">
 
-        {/* ぼかし背景 */}
-        {post.image_url && (
-          <img
-            src={post.image_url}
-            alt=""
-            aria-hidden
-            className="absolute inset-0 w-full h-full object-cover"
-            style={{
-              filter: "blur(28px)",
-              transform: "scale(1.12)",
-              opacity: closing ? 0 : 0.55,
-              transition: "opacity 0.26s ease",
-            }}
-            draggable={false}
-          />
-        )}
-        {/* メイン画像：contain でトリミングなし */}
+        {/* 画像（blur廃止・単一レンダリング・object-contain+黒背景でクリエイティブを完全表示） */}
         <div
-          className="absolute inset-0"
-          style={{ opacity: closing ? 0 : 1, transition: "opacity 0.26s ease" }}
+          className="absolute inset-0 bg-black"
+          style={{ opacity: closing ? 0 : 1, transition: "opacity 0.12s ease" }}
         >
           {post.image_url ? (
             <img
@@ -263,29 +252,15 @@ export function DiscoverViewer({ posts, currentUserId, initialLikedIds = [] }: D
               className="w-full h-full object-contain"
               draggable={false}
             />
-          ) : (
-            <div className="w-full h-full bg-gray-900" />
-          )}
+          ) : null}
         </div>
 
         {/* グラデーション */}
         <div className="absolute top-0 left-0 right-0 h-48 bg-gradient-to-b from-black/65 to-transparent pointer-events-none z-10" />
         <div className="absolute bottom-0 left-0 right-0 h-60 bg-gradient-to-t from-black/85 to-transparent pointer-events-none z-10" />
 
-        {/* ステータスバー */}
-        <div className="absolute top-0 left-0 right-0 pt-10 md:pt-3 px-5 z-20 pointer-events-none">
-          <div className="flex items-center justify-between text-white text-[11px] font-bold">
-            <span>9:41</span>
-            <div className="flex items-end gap-[2px]">
-              {[3, 5, 7, 9].map((h, i) => (
-                <div key={i} className="w-[3px] bg-white rounded-[1px]" style={{ height: `${h}px` }} />
-              ))}
-            </div>
-          </div>
-        </div>
-
         {/* 全体プログレスバー（CSS animation） */}
-        <div className="absolute top-16 md:top-8 left-0 right-0 px-2 z-20 pointer-events-none">
+        <div className="absolute top-10 md:top-3 left-0 right-0 px-2 z-20 pointer-events-none">
           <div className="flex gap-[2px]">
             {posts.map((_, i) => (
               <div key={i} className="flex-1 h-[2px] bg-white/25 rounded-full overflow-hidden">
@@ -293,10 +268,10 @@ export function DiscoverViewer({ posts, currentUserId, initialLikedIds = [] }: D
                   // 完了済み: 静的に 100%
                   <div className="h-full w-full bg-white rounded-full" />
                 ) : i === index ? (
-                  // 現在: CSS animation (key で再マウント)
+                  // 現在: CSS animation (key で再マウント、origin-left で scaleX アニメ)
                   <div
                     key={storyKey}
-                    className="h-full bg-white rounded-full"
+                    className="h-full bg-white rounded-full origin-left"
                     style={{
                       animation: `story-fill ${STORY_DURATION}ms linear forwards`,
                       animationPlayState: paused ? "paused" : "running",
@@ -309,7 +284,7 @@ export function DiscoverViewer({ posts, currentUserId, initialLikedIds = [] }: D
         </div>
 
         {/* ユーザー情報 */}
-        <div className="absolute top-20 md:top-12 left-0 right-0 px-3 z-20 flex items-center pointer-events-none">
+        <div className="absolute top-14 md:top-7 left-0 right-0 px-3 z-20 flex items-center pointer-events-none">
           <div className="w-8 h-8 rounded-full overflow-hidden bg-gray-700 shrink-0 mr-2 ring-[1.5px] ring-white/40 flex items-center justify-center">
             {avatarUrl ? (
               <img src={avatarUrl} alt={username} className="w-full h-full object-cover" />
@@ -334,7 +309,7 @@ export function DiscoverViewer({ posts, currentUserId, initialLikedIds = [] }: D
         {/* 閉じるボタン */}
         <Link
           href="/"
-          className="absolute top-20 md:top-12 right-3 p-1.5 z-30"
+          className="absolute top-14 md:top-7 right-3 p-1.5 z-30"
           onPointerDown={(e) => e.stopPropagation()}
         >
           <X className="w-5 h-5 text-white drop-shadow" />

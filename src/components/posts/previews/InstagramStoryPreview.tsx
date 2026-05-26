@@ -46,7 +46,7 @@ export function InstagramStoryPreview({ post, onClose }: InstagramStoryPreviewPr
     startTimeRef.current = performance.now();
     timeoutRef.current = setTimeout(() => {
       setClosing(true);
-      setTimeout(() => onClose?.(), 320);
+      setTimeout(() => onClose?.(), 150);
     }, ms);
   };
 
@@ -72,7 +72,7 @@ export function InstagramStoryPreview({ post, onClose }: InstagramStoryPreviewPr
   const doAdvance = () => {
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
     setClosing(true);
-    setTimeout(() => onClose?.(), 280);
+    setTimeout(() => onClose?.(), 150);
   };
 
   const doRestart = () => {
@@ -127,23 +127,12 @@ export function InstagramStoryPreview({ post, onClose }: InstagramStoryPreviewPr
         WebkitUserSelect: "none",
       }}
     >
-      {/* ぼかし背景（元画像でスペースを埋める・クリエイティブ印象を保つ） */}
-      {post.image_url && (
-        <img
-          src={post.image_url}
-          alt=""
-          aria-hidden
-          className="absolute inset-0 w-full h-full object-cover"
-          style={{ filter: "blur(24px)", transform: "scale(1.12)", opacity: 0.55 }}
-          draggable={false}
-        />
-      )}
-      {/* メイン画像：contain でトリミングなし・元のサイズ感を保持 */}
+      {/* 画像（blur廃止・単一レンダリング・Instagram 標準の object-cover） */}
       {post.image_url ? (
         <img
           src={post.image_url}
           alt={post.title}
-          className="absolute inset-0 w-full h-full object-contain"
+          className="absolute inset-0 w-full h-full object-cover"
           draggable={false}
         />
       ) : (
@@ -173,7 +162,7 @@ export function InstagramStoryPreview({ post, onClose }: InstagramStoryPreviewPr
           <div className="flex-1 h-[2.5px] bg-white/30 rounded-full overflow-hidden">
             <div
               key={storyKey}
-              className="h-full bg-white rounded-full"
+              className="h-full bg-white rounded-full origin-left"
               style={{
                 animation: `story-fill ${STORY_DURATION}ms linear forwards`,
                 animationPlayState: paused ? "paused" : "running",
