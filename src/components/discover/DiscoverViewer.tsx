@@ -310,16 +310,12 @@ export function DiscoverViewer({ posts, currentUserId, initialLikedIds = [] }: D
 
         {/* ユーザー情報 */}
         <div className="absolute top-20 md:top-12 left-0 right-0 px-3 z-20 flex items-center pointer-events-none">
-          <div className="w-8 h-8 rounded-full p-[2px] bg-gradient-to-tr from-yellow-400 via-pink-500 to-purple-600 shrink-0 mr-2">
-            <div className="w-full h-full rounded-full p-[1.5px] bg-black">
-              <div className="w-full h-full rounded-full overflow-hidden bg-gray-700 flex items-center justify-center">
-                {avatarUrl ? (
-                  <img src={avatarUrl} alt={username} className="w-full h-full object-cover" />
-                ) : (
-                  <User className="w-3.5 h-3.5 text-gray-300" />
-                )}
-              </div>
-            </div>
+          <div className="w-8 h-8 rounded-full overflow-hidden bg-gray-700 shrink-0 mr-2 ring-[1.5px] ring-white/40 flex items-center justify-center">
+            {avatarUrl ? (
+              <img src={avatarUrl} alt={username} className="w-full h-full object-cover" />
+            ) : (
+              <User className="w-3.5 h-3.5 text-gray-300" />
+            )}
           </div>
           <div>
             <p className="text-white font-semibold text-[12px] drop-shadow">{username}</p>

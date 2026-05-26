@@ -13,12 +13,13 @@ export function BottomNav() {
 
   if (HIDDEN_PATHS.some((p) => pathname.startsWith(p))) return null;
 
-  const isHome = pathname === "/";
-  const isProfile = pathname.startsWith("/profile");
+  const isHome     = pathname === "/";
+  const isDiscover = pathname.startsWith("/discover");
+  const isProfile  = pathname.startsWith("/profile");
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-sm border-t border-gray-100 md:hidden"
+      className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-100 md:hidden"
       style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
     >
       <div className="flex items-center justify-around h-14">
@@ -27,41 +28,52 @@ export function BottomNav() {
         <Link
           href="/"
           className={cn(
-            "flex flex-col items-center gap-0.5 px-5 py-1 min-w-[56px] transition-all",
-            isHome ? "text-gray-900" : "text-gray-400 active:text-gray-600"
+            "flex flex-col items-center gap-0.5 px-5 py-1 min-w-[56px] transition-colors",
+            isHome ? "text-gray-900" : "text-gray-400"
           )}
         >
-          <Home className={cn("w-5 h-5 transition-all", isHome && "fill-gray-900")} />
+          <Home className={cn("w-5 h-5", isHome && "fill-gray-900")} />
           <span className="text-[10px] font-medium">ホーム</span>
         </Link>
 
-        {/* Discover（グラデーションアイコンで目立たせる） */}
+        {/* ───── Discover（存在感を高める・グラデーションなし） ───── */}
         <Link
           href="/discover"
-          className="flex flex-col items-center gap-0.5 px-3 py-1 min-w-[56px] active:scale-95 transition-transform"
+          className="flex flex-col items-center gap-0.5 px-3 py-1 min-w-[64px] active:scale-95 transition-transform"
         >
+          {/* 再生アイコン：アクティブ時は黒塗り、非アクティブは淡いグレー円 */}
           <div
-            className="w-10 h-10 rounded-2xl flex items-center justify-center shadow-md"
-            style={{
-              background: "linear-gradient(135deg, #f9d423 0%, #f83600 40%, #c0392b 70%, #8e44ad 100%)",
-              boxShadow: "0 4px 12px rgba(248, 54, 0, 0.35)",
-            }}
+            className={cn(
+              "w-10 h-10 rounded-full flex items-center justify-center transition-colors",
+              isDiscover ? "bg-gray-900" : "bg-gray-100"
+            )}
           >
-            {/* 再生ボタン風の三角形 */}
-            <svg width="16" height="18" viewBox="0 0 16 18" fill="none">
-              <path d="M2 1.5L14 9L2 16.5V1.5Z" fill="white" stroke="white" strokeWidth="1" strokeLinejoin="round"/>
+            {/* 三角形 play アイコン（SVG直書きで細かく調整） */}
+            <svg width="14" height="16" viewBox="0 0 14 16" fill="none">
+              <path
+                d="M1.5 1.5L12.5 8L1.5 14.5V1.5Z"
+                fill={isDiscover ? "white" : "#9CA3AF"}
+                stroke={isDiscover ? "white" : "#9CA3AF"}
+                strokeWidth="0.5"
+                strokeLinejoin="round"
+              />
             </svg>
           </div>
-          <span className="text-[10px] font-semibold text-gray-700">Discover</span>
+          <span className={cn(
+            "text-[10px] font-semibold",
+            isDiscover ? "text-gray-900" : "text-gray-500"
+          )}>
+            Discover
+          </span>
         </Link>
 
-        {/* 投稿 */}
+        {/* 投稿（黒円・シンプル） */}
         <Link
           href="/posts/new"
           className="flex flex-col items-center gap-0.5 px-5 py-1 min-w-[56px] active:scale-95 transition-transform"
         >
-          <div className="w-8 h-8 rounded-full bg-red-500 flex items-center justify-center shadow-sm">
-            <Plus className="w-4 h-4 text-white" />
+          <div className="w-8 h-8 rounded-full bg-gray-900 flex items-center justify-center">
+            <Plus className="w-4 h-4 text-white" strokeWidth={2.5} />
           </div>
           <span className="text-[10px] font-medium text-gray-400">投稿</span>
         </Link>
@@ -70,11 +82,11 @@ export function BottomNav() {
         <Link
           href="/profile"
           className={cn(
-            "flex flex-col items-center gap-0.5 px-5 py-1 min-w-[56px] transition-all",
-            isProfile ? "text-gray-900" : "text-gray-400 active:text-gray-600"
+            "flex flex-col items-center gap-0.5 px-5 py-1 min-w-[56px] transition-colors",
+            isProfile ? "text-gray-900" : "text-gray-400"
           )}
         >
-          <User className={cn("w-5 h-5 transition-all", isProfile && "fill-gray-900")} />
+          <User className={cn("w-5 h-5", isProfile && "fill-gray-900")} />
           <span className="text-[10px] font-medium">プロフィール</span>
         </Link>
 
