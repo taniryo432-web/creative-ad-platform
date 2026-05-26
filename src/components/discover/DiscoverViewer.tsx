@@ -235,7 +235,23 @@ export function DiscoverViewer({ posts, currentUserId, initialLikedIds = [] }: D
     >
       <div className="relative w-full h-full md:w-[430px] md:h-[760px] md:rounded-2xl overflow-hidden">
 
-        {/* 背景画像 */}
+        {/* ぼかし背景 */}
+        {post.image_url && (
+          <img
+            src={post.image_url}
+            alt=""
+            aria-hidden
+            className="absolute inset-0 w-full h-full object-cover"
+            style={{
+              filter: "blur(28px)",
+              transform: "scale(1.12)",
+              opacity: closing ? 0 : 0.55,
+              transition: "opacity 0.26s ease",
+            }}
+            draggable={false}
+          />
+        )}
+        {/* メイン画像：contain でトリミングなし */}
         <div
           className="absolute inset-0"
           style={{ opacity: closing ? 0 : 1, transition: "opacity 0.26s ease" }}
@@ -244,7 +260,7 @@ export function DiscoverViewer({ posts, currentUserId, initialLikedIds = [] }: D
             <img
               src={post.image_url}
               alt={post.title}
-              className="w-full h-full object-cover"
+              className="w-full h-full object-contain"
               draggable={false}
             />
           ) : (
@@ -338,9 +354,10 @@ export function DiscoverViewer({ posts, currentUserId, initialLikedIds = [] }: D
           </div>
         )}
 
-        {/* いいねボタン */}
+        {/* いいねボタン（safe area + ホームバー分だけ上げる） */}
         <button
-          className="absolute bottom-32 right-4 z-30 flex flex-col items-center gap-1"
+          className="absolute right-4 z-30 flex flex-col items-center gap-1"
+          style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 8rem)" }}
           onPointerDown={(e) => e.stopPropagation()}
           onPointerUp={(e) => { e.stopPropagation(); handleLike(); }}
           disabled={!currentUserId}
@@ -367,14 +384,18 @@ export function DiscoverViewer({ posts, currentUserId, initialLikedIds = [] }: D
 
         {/* シェア */}
         <button
-          className="absolute bottom-16 right-4 z-30"
+          className="absolute right-4 z-30"
+          style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 4rem)" }}
           onPointerDown={(e) => e.stopPropagation()}
         >
           <Send className="w-6 h-6 text-white/70 -rotate-12 drop-shadow" strokeWidth={1.5} />
         </button>
 
         {/* 下部テキスト */}
-        <div className="absolute bottom-0 left-0 right-16 px-4 pb-10 z-20 pointer-events-none">
+        <div
+          className="absolute bottom-0 left-0 right-16 px-4 z-20 pointer-events-none"
+          style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 2.5rem)" }}
+        >
           <p className="text-white font-semibold text-[15px] leading-snug mb-2 drop-shadow-lg line-clamp-2">
             {post.title}
           </p>

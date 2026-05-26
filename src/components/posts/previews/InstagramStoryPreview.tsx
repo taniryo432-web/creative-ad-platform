@@ -127,12 +127,23 @@ export function InstagramStoryPreview({ post, onClose }: InstagramStoryPreviewPr
         WebkitUserSelect: "none",
       }}
     >
-      {/* 背景画像 */}
+      {/* ぼかし背景（元画像でスペースを埋める・クリエイティブ印象を保つ） */}
+      {post.image_url && (
+        <img
+          src={post.image_url}
+          alt=""
+          aria-hidden
+          className="absolute inset-0 w-full h-full object-cover"
+          style={{ filter: "blur(24px)", transform: "scale(1.12)", opacity: 0.55 }}
+          draggable={false}
+        />
+      )}
+      {/* メイン画像：contain でトリミングなし・元のサイズ感を保持 */}
       {post.image_url ? (
         <img
           src={post.image_url}
           alt={post.title}
-          className="absolute inset-0 w-full h-full object-cover"
+          className="absolute inset-0 w-full h-full object-contain"
           draggable={false}
         />
       ) : (

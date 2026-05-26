@@ -81,4 +81,15 @@
   .scroll-hidden::-webkit-scrollbar {
     display: none;
   }
+
+  /* Safe area (iPhone ノッチ・ホームバー対応) */
+  .pt-safe {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
 }

@@ -12,9 +12,12 @@ export function Header() {
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-100">
       <div className="max-w-screen-xl mx-auto px-4 sm:px-6 h-14 flex items-center gap-3">
-        {/* ロゴ */}
-        <Link href="/" className="flex items-center gap-2 shrink-0">
-          <div className="w-7 h-7 bg-gray-900 rounded-lg flex items-center justify-center">
+        {/* ロゴ：モバイルでも確実に 44px タップ領域を確保 */}
+        <Link
+          href="/"
+          className="flex items-center gap-2 shrink-0 min-h-[44px] min-w-[44px]"
+        >
+          <div className="w-7 h-7 bg-gray-900 rounded-lg flex items-center justify-center shrink-0">
             <LayoutGrid className="w-4 h-4 text-white" />
           </div>
           <span className="font-semibold text-[14px] tracking-tight text-gray-900 hidden sm:block">
