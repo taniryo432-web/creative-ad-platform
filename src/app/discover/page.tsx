@@ -8,7 +8,7 @@ export default async function DiscoverPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const posts = await fetchRandomPosts(30);
+  const posts = await fetchRandomPosts(15);
 
   if (posts.length === 0) {
     return (

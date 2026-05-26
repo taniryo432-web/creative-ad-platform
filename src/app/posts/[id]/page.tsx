@@ -59,7 +59,7 @@ export default async function PostPage({ params }: PostPageProps) {
             height={900}
             className="w-full h-auto"
             priority
-            unoptimized
+            sizes="(max-width: 768px) 100vw, 672px"
           />
           {/* Preview ボタン（画像下部に常設） */}
           <div className="absolute bottom-0 left-0 right-0 px-4 pb-4 pt-12 bg-gradient-to-t from-black/50 to-transparent flex items-end justify-between">

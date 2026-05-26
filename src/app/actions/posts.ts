@@ -14,13 +14,15 @@ function shuffleArray<T>(arr: T[]): T[] {
   return a;
 }
 
-export async function fetchRandomPosts(count = 30): Promise<Post[]> {
+export async function fetchRandomPosts(count = 15): Promise<Post[]> {
   const supabase = await createClient();
+  // 必要件数の 3 倍だけ取得してシャッフル（100 件取得は過剰）
+  const fetchLimit = Math.min(count * 3, 60);
   const { data: posts } = await supabase
     .from("posts")
     .select(`*, user:users(*), like_count:likes(count)`)
     .not("image_url", "is", null)
-    .limit(100);
+    .limit(fetchLimit);
 
   if (!posts || posts.length === 0) return [];
 

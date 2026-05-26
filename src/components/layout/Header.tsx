@@ -65,13 +65,13 @@ export function Header() {
             </Link>
           </nav>
 
-          {/* 投稿ボタン */}
+          {/* 投稿ボタン（モバイルは BottomNav に移動済み→デスクトップのみ表示） */}
           <Link
             href="/posts/new"
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-red-500 text-white text-[13px] font-semibold rounded-full hover:bg-red-600 transition-colors"
+            className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-red-500 text-white text-[13px] font-semibold rounded-full hover:bg-red-600 transition-colors"
           >
             <Plus className="w-3.5 h-3.5" />
-            <span className="hidden sm:block">投稿</span>
+            <span>投稿</span>
           </Link>
 
           <UserMenu />
