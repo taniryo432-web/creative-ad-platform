@@ -1,5 +1,16 @@
 "use client";
 
+/**
+ * DiscoverViewer
+ *
+ * パフォーマンス最適化:
+ * - プログレスバー: CSS animation (@keyframes story-fill) + key remount
+ *   → setInterval/state 更新による毎フレーム再レンダリングを排除
+ * - 進行タイミング: setTimeout 1 本のみ
+ * - 次 2 件の画像をプリロード (Image constructor でブラウザキャッシュへ先読み)
+ * - 再レンダリング: index / paused / storyKey 変化時のみ
+ */
+
 import { useState, useEffect, useRef } from "react";
 import { X, Heart, Send, User, RefreshCw } from "lucide-react";
 import Link from "next/link";
@@ -7,7 +18,7 @@ import { createClient } from "@/lib/supabase/client";
 import type { Post } from "@/types";
 
 const STORY_DURATION = 5000;
-const TICK_MS = 50;
+const PRELOAD_AHEAD = 2; // 次 N 件を先読み
 
 interface DiscoverViewerProps {
   posts: Post[];
@@ -17,10 +28,10 @@ interface DiscoverViewerProps {
 
 export function DiscoverViewer({ posts, currentUserId, initialLikedIds = [] }: DiscoverViewerProps) {
   const [index, setIndex] = useState(0);
-  const [progress, setProgress] = useState(0);
   const [paused, setPaused] = useState(false);
   const [closing, setClosing] = useState(false);
   const [done, setDone] = useState(false);
+  const [storyKey, setStoryKey] = useState(0);
 
   // いいね状態
   const [likedIds, setLikedIds] = useState<Set<string>>(new Set(initialLikedIds));
@@ -30,85 +41,83 @@ export function DiscoverViewer({ posts, currentUserId, initialLikedIds = [] }: D
   const [heartAnim, setHeartAnim] = useState(false);
   const [likeLoading, setLikeLoading] = useState(false);
 
-  const progressRef = useRef(0);
-  const pausedRef = useRef(false);
-  const completedRef = useRef(false);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const startTimeRef = useRef(0);
+  const remainingRef = useRef(STORY_DURATION);
   const longPressRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const wasLongPressRef = useRef(false);
 
   const supabase = createClient();
-  const increment = (100 / STORY_DURATION) * TICK_MS;
   const post = posts[index];
 
-  // ---- タイマーロジック ----
-  const startTimer = () => {
-    if (intervalRef.current) clearInterval(intervalRef.current);
-    completedRef.current = false;
-    intervalRef.current = setInterval(() => {
-      if (pausedRef.current || completedRef.current) return;
-      progressRef.current = Math.min(progressRef.current + increment, 100);
-      setProgress(progressRef.current);
-      if (progressRef.current >= 100) {
-        completedRef.current = true;
-        clearInterval(intervalRef.current!);
-        goNext();
-      }
-    }, TICK_MS);
-  };
-
+  // ---- 次ストーリーへ ----
   const goNext = () => {
     setClosing(true);
     setTimeout(() => {
       if (index < posts.length - 1) {
         setIndex((i) => i + 1);
-        progressRef.current = 0;
-        setProgress(0);
+        setStoryKey((k) => k + 1);
         setClosing(false);
-        setTimeout(startTimer, 50);
       } else {
         setDone(true);
       }
-    }, 280);
+    }, 260);
   };
 
   const goPrev = () => {
     setClosing(true);
     setTimeout(() => {
-      const newIndex = index > 0 ? index - 1 : 0;
-      setIndex(newIndex);
-      progressRef.current = 0;
-      setProgress(0);
+      setIndex((i) => Math.max(0, i - 1));
+      setStoryKey((k) => k + 1);
       setClosing(false);
-      setTimeout(startTimer, 50);
     }, 200);
   };
 
+  // ---- タイマー ----
+  const scheduleAdvance = (ms: number) => {
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    startTimeRef.current = performance.now();
+    timeoutRef.current = setTimeout(goNext, ms);
+  };
+
+  // storyKey / index が変わるたびにタイマーリセット
   useEffect(() => {
-    progressRef.current = 0;
-    setProgress(0);
-    startTimer();
-    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    remainingRef.current = STORY_DURATION;
+    scheduleAdvance(STORY_DURATION);
+    return () => { if (timeoutRef.current) clearTimeout(timeoutRef.current); };
+  }, [storyKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => { pausedRef.current = paused; }, [paused]);
+  // ポーズ/解除
+  useEffect(() => {
+    if (paused) {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      const elapsed = performance.now() - startTimeRef.current;
+      remainingRef.current = Math.max(0, remainingRef.current - elapsed);
+    } else {
+      scheduleAdvance(remainingRef.current);
+    }
+  }, [paused]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ---- いいねロジック ----
+  // ---- 次 N 件の画像をプリロード ----
+  useEffect(() => {
+    for (let i = 1; i <= PRELOAD_AHEAD; i++) {
+      const nextPost = posts[index + i];
+      if (nextPost?.image_url) {
+        const img = new window.Image();
+        img.src = nextPost.image_url;
+      }
+    }
+  }, [index, posts]);
+
+  // ---- いいね ----
   const handleLike = async () => {
     if (!currentUserId || !post || likeLoading) return;
+    if (typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate(25);
 
-    // ハプティクス（バイブ）
-    if (typeof navigator !== "undefined" && navigator.vibrate) {
-      navigator.vibrate(25);
-    }
-
-    // アニメーション
     setHeartAnim(true);
     setTimeout(() => setHeartAnim(false), 400);
 
     const isLiked = likedIds.has(post.id);
-
-    // 楽観的更新
     setLikedIds((prev) => {
       const next = new Set(prev);
       if (isLiked) next.delete(post.id);
@@ -128,7 +137,7 @@ export function DiscoverViewer({ posts, currentUserId, initialLikedIds = [] }: D
         await supabase.from("likes").insert({ post_id: post.id, user_id: currentUserId });
       }
     } catch {
-      // 失敗時はロールバック
+      // ロールバック
       setLikedIds((prev) => {
         const next = new Set(prev);
         if (isLiked) next.add(post.id);
@@ -144,7 +153,7 @@ export function DiscoverViewer({ posts, currentUserId, initialLikedIds = [] }: D
     }
   };
 
-  // ---- タップゾーン ----
+  // ---- ポインター ----
   const handlePointerDown = (e: React.PointerEvent) => {
     e.preventDefault();
     wasLongPressRef.current = false;
@@ -166,11 +175,8 @@ export function DiscoverViewer({ posts, currentUserId, initialLikedIds = [] }: D
     }
     const rect = e.currentTarget.getBoundingClientRect();
     const x = e.clientX - rect.left;
-    if (x < rect.width * 0.3) {
-      goPrev();
-    } else {
-      goNext();
-    }
+    if (x < rect.width * 0.3) goPrev();
+    else goNext();
   };
 
   const handlePointerLeave = () => {
@@ -178,7 +184,7 @@ export function DiscoverViewer({ posts, currentUserId, initialLikedIds = [] }: D
       clearTimeout(longPressRef.current);
       longPressRef.current = null;
     }
-    if (pausedRef.current) {
+    if (paused) {
       wasLongPressRef.current = false;
       setPaused(false);
     }
@@ -196,10 +202,8 @@ export function DiscoverViewer({ posts, currentUserId, initialLikedIds = [] }: D
             onClick={() => {
               setIndex(0);
               setDone(false);
-              progressRef.current = 0;
-              setProgress(0);
               setClosing(false);
-              setTimeout(startTimer, 100);
+              setStoryKey((k) => k + 1);
             }}
             className="flex items-center gap-2 px-4 py-2.5 bg-white text-gray-900 rounded-full text-sm font-semibold"
           >
@@ -229,13 +233,12 @@ export function DiscoverViewer({ posts, currentUserId, initialLikedIds = [] }: D
       className="fixed inset-0 z-50 bg-black flex items-center justify-center"
       style={{ userSelect: "none", WebkitUserSelect: "none" } as React.CSSProperties}
     >
-      {/* コンテンツエリア */}
       <div className="relative w-full h-full md:w-[430px] md:h-[760px] md:rounded-2xl overflow-hidden">
 
         {/* 背景画像 */}
         <div
           className="absolute inset-0"
-          style={{ opacity: closing ? 0 : 1, transition: "opacity 0.28s ease" }}
+          style={{ opacity: closing ? 0 : 1, transition: "opacity 0.26s ease" }}
         >
           {post.image_url ? (
             <img
@@ -265,17 +268,25 @@ export function DiscoverViewer({ posts, currentUserId, initialLikedIds = [] }: D
           </div>
         </div>
 
-        {/* 全体プログレスバー */}
+        {/* 全体プログレスバー（CSS animation） */}
         <div className="absolute top-16 md:top-8 left-0 right-0 px-2 z-20 pointer-events-none">
           <div className="flex gap-[2px]">
             {posts.map((_, i) => (
               <div key={i} className="flex-1 h-[2px] bg-white/25 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-white rounded-full"
-                  style={{
-                    width: i < index ? "100%" : i === index ? `${progress}%` : "0%",
-                  }}
-                />
+                {i < index ? (
+                  // 完了済み: 静的に 100%
+                  <div className="h-full w-full bg-white rounded-full" />
+                ) : i === index ? (
+                  // 現在: CSS animation (key で再マウント)
+                  <div
+                    key={storyKey}
+                    className="h-full bg-white rounded-full"
+                    style={{
+                      animation: `story-fill ${STORY_DURATION}ms linear forwards`,
+                      animationPlayState: paused ? "paused" : "running",
+                    }}
+                  />
+                ) : null}
               </div>
             ))}
           </div>
@@ -317,7 +328,7 @@ export function DiscoverViewer({ posts, currentUserId, initialLikedIds = [] }: D
           <X className="w-5 h-5 text-white drop-shadow" />
         </Link>
 
-        {/* ポーズ UI */}
+        {/* ポーズ */}
         {paused && (
           <div className="absolute inset-0 z-30 flex items-center justify-center pointer-events-none">
             <div className="flex gap-2.5">
@@ -327,7 +338,7 @@ export function DiscoverViewer({ posts, currentUserId, initialLikedIds = [] }: D
           </div>
         )}
 
-        {/* いいねボタン（右サイド） */}
+        {/* いいねボタン */}
         <button
           className="absolute bottom-32 right-4 z-30 flex flex-col items-center gap-1"
           onPointerDown={(e) => e.stopPropagation()}
@@ -347,12 +358,14 @@ export function DiscoverViewer({ posts, currentUserId, initialLikedIds = [] }: D
               strokeWidth={isLiked ? 0 : 1.5}
             />
           </div>
-          <span className="text-white text-[11px] font-medium drop-shadow">
-            {likeCount > 0 ? likeCount.toLocaleString() : ""}
-          </span>
+          {likeCount > 0 && (
+            <span className="text-white text-[11px] font-medium drop-shadow">
+              {likeCount.toLocaleString()}
+            </span>
+          )}
         </button>
 
-        {/* シェアボタン */}
+        {/* シェア */}
         <button
           className="absolute bottom-16 right-4 z-30"
           onPointerDown={(e) => e.stopPropagation()}
@@ -370,7 +383,6 @@ export function DiscoverViewer({ posts, currentUserId, initialLikedIds = [] }: D
               {post.description}
             </p>
           )}
-          {/* 詳細リンク */}
           <Link
             href={`/posts/${post.id}`}
             className="inline-flex items-center gap-1 text-white/50 text-[11px] hover:text-white/80 transition-colors pointer-events-auto"

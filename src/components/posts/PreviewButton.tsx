@@ -1,11 +1,22 @@
 "use client";
 
 import { useState } from "react";
+import dynamic from "next/dynamic";
 import { X, Smartphone } from "lucide-react";
 import { PhoneFrame } from "./previews/PhoneFrame";
-import { InstagramStoryPreview } from "./previews/InstagramStoryPreview";
-import { InstagramFeedPreview } from "./previews/InstagramFeedPreview";
-import { InstagramReelsPreview } from "./previews/InstagramReelsPreview";
+
+const InstagramStoryPreview = dynamic(
+  () => import("./previews/InstagramStoryPreview").then((m) => ({ default: m.InstagramStoryPreview })),
+  { ssr: false }
+);
+const InstagramFeedPreview = dynamic(
+  () => import("./previews/InstagramFeedPreview").then((m) => ({ default: m.InstagramFeedPreview })),
+  { ssr: false }
+);
+const InstagramReelsPreview = dynamic(
+  () => import("./previews/InstagramReelsPreview").then((m) => ({ default: m.InstagramReelsPreview })),
+  { ssr: false }
+);
 
 type PreviewMode = "story" | "feed" | "reels";
 

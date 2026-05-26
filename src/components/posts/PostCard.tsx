@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, memo } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Heart, User } from "lucide-react";
@@ -14,7 +14,7 @@ interface PostCardProps {
   showAuthor?: boolean; // 将来の匿名モード切替用フラグ
 }
 
-export function PostCard({ post, currentUserId, showAuthor = true }: PostCardProps) {
+function PostCardInner({ post, currentUserId, showAuthor = true }: PostCardProps) {
   const [liked, setLiked] = useState(post.is_liked ?? false);
   const [likeCount, setLikeCount] = useState(post.like_count ?? 0);
   const [loading, setLoading] = useState(false);
@@ -52,7 +52,7 @@ export function PostCard({ post, currentUserId, showAuthor = true }: PostCardPro
               width={600}
               height={900}
               className="w-full h-auto block"
-              unoptimized
+              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, (max-width: 1280px) 25vw, 20vw"
             />
           ) : (
             <div className="w-full aspect-[3/4] flex items-center justify-center bg-gray-100">
@@ -122,3 +122,5 @@ export function PostCard({ post, currentUserId, showAuthor = true }: PostCardPro
     </div>
   );
 }
+
+export const PostCard = memo(PostCardInner);

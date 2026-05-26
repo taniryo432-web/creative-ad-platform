@@ -1,10 +1,19 @@
 "use client";
 
+/**
+ * InstagramStoryPreview
+ *
+ * パフォーマンス最適化:
+ * - プログレスバーは CSS animation (@keyframes story-fill) で描画
+ *   → setInterval/setProgress による秒間 20 回再レンダリングを完全排除
+ * - 進行タイミングは setTimeout 1 本のみ
+ * - 再レンダリングは paused / closing / storyKey 変化時のみ (最小限)
+ */
+
 import { useState, useEffect, useRef } from "react";
 import { X, Send, Heart, User } from "lucide-react";
 
-const STORY_DURATION = 5000; // 5秒
-const TICK_MS = 50;
+const STORY_DURATION = 5000;
 
 export interface StoryPost {
   title: string;
@@ -19,62 +28,59 @@ interface InstagramStoryPreviewProps {
 }
 
 export function InstagramStoryPreview({ post, onClose }: InstagramStoryPreviewProps) {
-  const [progress, setProgress] = useState(0);
   const [paused, setPaused] = useState(false);
   const [closing, setClosing] = useState(false);
+  const [storyKey, setStoryKey] = useState(0); // 増加でプログレスバー再マウント
 
-  // Refs でタイマー状態を管理（再レンダリングに依存しない）
-  const progressRef = useRef(0);
-  const pausedRef = useRef(false);
-  const completedRef = useRef(false);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const startTimeRef = useRef(0);
+  const remainingRef = useRef(STORY_DURATION);
   const longPressRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const wasLongPressRef = useRef(false);
 
   const username = post.user?.name ?? "advertiser";
   const avatarUrl = post.user?.icon_url;
-  const increment = (100 / STORY_DURATION) * TICK_MS;
 
-  const startTimer = () => {
-    if (intervalRef.current) clearInterval(intervalRef.current);
-    intervalRef.current = setInterval(() => {
-      if (pausedRef.current || completedRef.current) return;
-      progressRef.current = Math.min(progressRef.current + increment, 100);
-      setProgress(progressRef.current);
-      if (progressRef.current >= 100) {
-        completedRef.current = true;
-        clearInterval(intervalRef.current!);
-        setClosing(true);
-        setTimeout(() => onClose?.(), 400);
-      }
-    }, TICK_MS);
+  const scheduleAdvance = (ms: number) => {
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    startTimeRef.current = performance.now();
+    timeoutRef.current = setTimeout(() => {
+      setClosing(true);
+      setTimeout(() => onClose?.(), 320);
+    }, ms);
   };
 
+  // storyKey が変わるたびに（初回・再スタート時）タイマーリセット
   useEffect(() => {
-    startTimer();
-    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  useEffect(() => {
-    pausedRef.current = paused;
-  }, [paused]);
-
-  const doRestart = () => {
-    completedRef.current = false;
-    progressRef.current = 0;
-    setProgress(0);
+    remainingRef.current = STORY_DURATION;
     setClosing(false);
-    startTimer();
-  };
+    scheduleAdvance(STORY_DURATION);
+    return () => { if (timeoutRef.current) clearTimeout(timeoutRef.current); };
+  }, [storyKey]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ポーズ/解除でタイマー操作
+  useEffect(() => {
+    if (paused) {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      const elapsed = performance.now() - startTimeRef.current;
+      remainingRef.current = Math.max(0, remainingRef.current - elapsed);
+    } else {
+      scheduleAdvance(remainingRef.current);
+    }
+  }, [paused]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const doAdvance = () => {
-    if (completedRef.current) return;
-    completedRef.current = true;
-    if (intervalRef.current) clearInterval(intervalRef.current);
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
     setClosing(true);
-    setTimeout(() => onClose?.(), 300);
+    setTimeout(() => onClose?.(), 280);
   };
 
+  const doRestart = () => {
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    setStoryKey((k) => k + 1);
+  };
+
+  // ---- ポインターインタラクション ----
   const handlePointerDown = (e: React.PointerEvent) => {
     e.preventDefault();
     wasLongPressRef.current = false;
@@ -96,11 +102,8 @@ export function InstagramStoryPreview({ post, onClose }: InstagramStoryPreviewPr
     }
     const rect = e.currentTarget.getBoundingClientRect();
     const x = e.clientX - rect.left;
-    if (x < rect.width * 0.3) {
-      doRestart();
-    } else {
-      doAdvance();
-    }
+    if (x < rect.width * 0.3) doRestart();
+    else doAdvance();
   };
 
   const handlePointerLeave = () => {
@@ -108,7 +111,7 @@ export function InstagramStoryPreview({ post, onClose }: InstagramStoryPreviewPr
       clearTimeout(longPressRef.current);
       longPressRef.current = null;
     }
-    if (pausedRef.current) {
+    if (paused) {
       wasLongPressRef.current = false;
       setPaused(false);
     }
@@ -119,7 +122,7 @@ export function InstagramStoryPreview({ post, onClose }: InstagramStoryPreviewPr
       className="relative w-full h-full bg-black overflow-hidden"
       style={{
         opacity: closing ? 0 : 1,
-        transition: "opacity 0.35s ease",
+        transition: "opacity 0.3s ease",
         userSelect: "none",
         WebkitUserSelect: "none",
       }}
@@ -136,9 +139,8 @@ export function InstagramStoryPreview({ post, onClose }: InstagramStoryPreviewPr
         <div className="absolute inset-0 bg-gray-900" />
       )}
 
-      {/* 上部グラデーション */}
+      {/* グラデーション */}
       <div className="absolute top-0 left-0 right-0 h-44 bg-gradient-to-b from-black/65 to-transparent pointer-events-none z-10" />
-      {/* 下部グラデーション */}
       <div className="absolute bottom-0 left-0 right-0 h-52 bg-gradient-to-t from-black/80 to-transparent pointer-events-none z-10" />
 
       {/* ステータスバー */}
@@ -153,19 +155,20 @@ export function InstagramStoryPreview({ post, onClose }: InstagramStoryPreviewPr
         </div>
       </div>
 
-      {/* プログレスバー */}
+      {/* プログレスバー（CSS animation で描画 → JS 再レンダリングなし） */}
       <div className="absolute top-[72px] left-0 right-0 px-2 z-20 pointer-events-none">
         <div className="flex gap-[3px]">
-          {/* 前のストーリー（完了済み） */}
           <div className="w-5 shrink-0 h-[2.5px] bg-white rounded-full" />
-          {/* 現在のストーリー */}
           <div className="flex-1 h-[2.5px] bg-white/30 rounded-full overflow-hidden">
             <div
+              key={storyKey}
               className="h-full bg-white rounded-full"
-              style={{ width: `${progress}%` }}
+              style={{
+                animation: `story-fill ${STORY_DURATION}ms linear forwards`,
+                animationPlayState: paused ? "paused" : "running",
+              }}
             />
           </div>
-          {/* 次のストーリー */}
           <div className="flex-1 h-[2.5px] bg-white/30 rounded-full" />
         </div>
       </div>
@@ -189,7 +192,7 @@ export function InstagramStoryPreview({ post, onClose }: InstagramStoryPreviewPr
         </div>
       </div>
 
-      {/* タップゾーン（全体） */}
+      {/* タップゾーン */}
       <div
         className="absolute inset-0 z-20"
         onPointerDown={handlePointerDown}
@@ -197,7 +200,7 @@ export function InstagramStoryPreview({ post, onClose }: InstagramStoryPreviewPr
         onPointerLeave={handlePointerLeave}
       />
 
-      {/* 閉じるボタン（タップゾーンより前面） */}
+      {/* 閉じるボタン */}
       <button
         className="absolute top-[82px] right-3 p-1.5 z-30"
         onPointerDown={(e) => e.stopPropagation()}
@@ -206,12 +209,12 @@ export function InstagramStoryPreview({ post, onClose }: InstagramStoryPreviewPr
         <X className="w-5 h-5 text-white drop-shadow" />
       </button>
 
-      {/* 一時停止インジケーター */}
+      {/* ポーズインジケーター */}
       {paused && (
         <div className="absolute inset-0 z-30 flex items-center justify-center pointer-events-none">
           <div className="flex gap-2.5">
-            <div className="w-[5px] h-12 bg-white/85 rounded-full shadow-lg" />
-            <div className="w-[5px] h-12 bg-white/85 rounded-full shadow-lg" />
+            <div className="w-[5px] h-12 bg-white/85 rounded-full" />
+            <div className="w-[5px] h-12 bg-white/85 rounded-full" />
           </div>
         </div>
       )}
@@ -229,9 +232,6 @@ export function InstagramStoryPreview({ post, onClose }: InstagramStoryPreviewPr
           <Send className="w-6 h-6 text-white -rotate-12" strokeWidth={1.5} />
         </div>
       </div>
-
-      {/* 左タップヒント（初回のみ薄く表示） */}
-      <div className="absolute left-0 top-1/3 bottom-1/3 w-1/3 z-10 pointer-events-none flex items-center justify-start pl-3 opacity-0" />
     </div>
   );
 }
