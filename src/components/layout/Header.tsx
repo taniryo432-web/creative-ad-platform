@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Plus, Search, LayoutGrid } from "lucide-react";
+import { Plus, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { UserMenu } from "@/components/layout/UserMenu";
 
@@ -17,8 +17,14 @@ export function Header() {
           href="/"
           className="flex items-center gap-2 shrink-0 min-h-[44px] min-w-[44px]"
         >
-          <div className="w-7 h-7 bg-gray-900 rounded-lg flex items-center justify-center shrink-0">
-            <LayoutGrid className="w-4 h-4 text-white" />
+          {/* アプリアイコン: 2枚重なりパネル */}
+          <div className="w-7 h-7 bg-[#1A1816] rounded-lg flex items-center justify-center shrink-0 overflow-hidden">
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+              {/* 後ろパネル（グレー、右傾き） */}
+              <rect x="8" y="3" width="7" height="12" rx="1.5" fill="#4A4540" transform="rotate(8 11.5 9)" />
+              {/* 前パネル（クリーム、左傾き） */}
+              <rect x="3" y="2.5" width="8" height="13" rx="1.5" fill="#EDE9E3" transform="rotate(-5 7 9)" />
+            </svg>
           </div>
           <span className="font-semibold text-[14px] tracking-tight text-gray-900 hidden sm:block">
             FFI Creative

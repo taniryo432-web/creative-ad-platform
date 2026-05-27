@@ -1,0 +1,17 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <!-- V2: ダーク背景・ハイコントラスト版
+       夜間・ダークモード環境でも映える。背景を濃くしてパネルを明るく逆転。 -->
+
+  <!-- iOS squircle background: deep warm charcoal -->
+  <rect width="1024" height="1024" rx="230" fill="#1A1816"/>
+
+  <!-- Back panel: warm ivory, tilted right (+8deg) -->
+  <rect x="438" y="322" width="216" height="370" rx="20"
+        fill="#4A4540"
+        transform="rotate(8 546 507)"/>
+
+  <!-- Front panel: warm cream, tilted left (-5deg) -->
+  <rect x="362" y="306" width="250" height="412" rx="24"
+        fill="#EDE9E3"
+        transform="rotate(-5 487 512)"/>
+</svg>

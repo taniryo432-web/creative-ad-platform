@@ -22,6 +22,23 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "FFI Creative",
   description: "クリエイティブ共有プラットフォーム",
+  manifest: "/manifest.json",
+  icons: {
+    icon: "/app-icon.svg",
+    apple: "/apple-touch-icon.png",
+  },
+  openGraph: {
+    title: "FFI Creative",
+    description: "クリエイティブ共有プラットフォーム",
+    siteName: "FFI Creative",
+    locale: "ja_JP",
+    type: "website",
+    images: [{ url: "/og-image.png", width: 1200, height: 630 }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    images: ["/og-image.png"],
+  },
 };
 
 export default function RootLayout({
